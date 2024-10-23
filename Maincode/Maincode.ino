@@ -257,6 +257,8 @@ const uint8_t spSAFE[]          PROGMEM = {0x08,0xF8,0x39,0x4C,0x02,0x1A,0xD0,0x
 const uint8_t spCHOICE[]            PROGMEM ={0x06,0x98,0xA9,0x2A,0x03,0x16,0x40,0x00,0x9B,0x9D,0x2B,0xB6,0x26,0x3B,0x92,0xF3,0xEE,0x64,0xA7,0x2B,0x8B,0x3A,0xC7,0x83,0xB3,0xED,0x6A,0xD5,0x31,0x8E,0x7A,0x50,0xE7,0xD9,0xB5,0x21,0x99,0x74,0x2D,0x6F,0x5C,0x06,0x5F,0x9C,0xD2,0x3B,0x4A,0x18,0x63,0x70,0x11,0x89,0x19,0x04,0xF8,0x5E,0x48,0x03,0x1A,0xB0,0x80,0x06,0x24,0x40,0x81,0x07,0x00,0x00};
 const uint8_t spCONNECTED[]         PROGMEM ={0x0E,0x88,0xC7,0x35,0x00,0x31,0x15,0x7B,0x20,0x24,0xB1,0x78,0x5A,0xD8,0x92,0x9B,0x9F,0xDC,0xE7,0x70,0x53,0x9F,0x93,0x72,0xEF,0x5D,0x1D,0x2D,0x6D,0x2F,0x4E,0x96,0x72,0x84,0x43,0xD5,0x39,0x69,0x6E,0x91,0x86,0xDD,0x66,0xA4,0x69,0x59,0x90,0x8F,0xEB,0x94,0x45,0xED,0xAA,0x62,0x4A,0x78,0x0D,0x00,0x0A,0x90,0x41,0xA3,0x65,0x25,0x9A,0xA3,0xEB,0xB6,0x59,0xEC,0xAA,0xB6,0xA2,0x17,0x26,0x2C,0xC3,0x33,0xC6,0xDE,0xF6,0xAA,0x57,0xD2,0x2D,0x3D,0x1D,0xBA,0xA6,0x44,0x15,0x16,0xC9,0xAC,0xFA,0x18,0x45,0x94,0xA2,0x26,0xC0,0x03,0x00,0x00};
 //----------------------------------------------------------------------------------
+
+//----------------------------------------------------------------------------------
 //Telescope
 //Variables del motor ascensión
 volatile int encposA = 0; //marca posición del encoder
@@ -265,6 +267,7 @@ volatile int graposA = 0; //grados actuales
 volatile int gradesA = 0; //grados al que se quiere llegar
 int in1 = 5; //salida 1 del motordriver PWM
 int in2 = 22; //salida 2 del motordriver
+int pinA0A = 2;
 
 //Variables del motor declinación
 volatile int encposB = 0; //marca posición del encoder
@@ -273,6 +276,7 @@ volatile int graposB = 0; //grados actuales
 volatile int gradesB = 0; //grados al que se quiere llegar
 int in3 = 4; //salida 3 del motordriver PWM
 int in4 = 24; //salida 4 del motordriver
+int pinA0B= 3;
 
 //Variables generales
 int N = 100; //número de ranuras del encoder
@@ -281,23 +285,27 @@ int number1;
 int number2; 
 String dato;
 
-#include <LiquidCrystal.h>
-//LCD pantalla
+//#include <LiquidCrystal.h>
+// //LCD pantalla
 
-int rs = 48;
-int e = 7;
-int d4 = 50;
-int d5 = 12; 
-int d6 = 13;
-int d7 = 52; 
-int numero = 0;
+// int rs = 48;
+// int e = 7;
+// int d4 = 50;
+// int d5 = 12; 
+// int d6 = 13;
+// int d7 = 52; 
+// int numero = 0;
 
-LiquidCrystal lcd(rs, e, d4, d5, d6, d7);
+// LiquidCrystal lcd(rs, e, d4, d5, d6, d7);
 
 //DHT11 modulo de temperatutra y humedad
 
-
+#include <DHT.h>
 #include <DHT_U.h>
+#include <LiquidCrystal_I2C.h>
+#include <Wire.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 #define Type DHT11
 int dhtPin = 46;
@@ -309,7 +317,7 @@ float tempF;
 // LDR fotocelda
 
 int photocellPin = 0;
-int photocellReading;
+int photocellReading;  
 String light;
 
 
@@ -321,52 +329,53 @@ SoftwareSerial miBT(10,11);
 String data_before;
 String data;
 
+// void interrupcionA(){ 
+//   encposA++;
+
+//   lcd.setCursor(0, 1);
+//   lcd.print("Ascention:");
+//   lcd.print(encposA*5);
+//   }
+
+// void interrupcionB(){ 
+//   encposB++;
+
+//   lcd.setCursor(0, 1);
+//   lcd.print("Declination:");
+//   lcd.print(encposB*5);
+//   }
+
 void setup() {
   // put your setup code here, to run once:
-  lcd.begin(16, 2);
-  Serial.begin(9600);
+  
   HT.begin();
   miBT.begin(9600);
   pinMode(9,OUTPUT); //Salida del parlante
   voice.say(spHELLO);
 
+  lcd.init();
+  lcd.backlight();
+
+  Serial.begin(9600);
+  lcd.setCursor(0, 0);
+  lcd.print("Hi, Im Emmy");
+  lcd.setCursor(0, 1);
+  lcd.print("Your telescope");
+
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
-  attachInterrupt(0, interrupcionA, CHANGE); // entrada 2 PWM a la entrada A   del encoder1 
-  attachInterrupt(1, interrupcionB, CHANGE); // entrada 3 PWM a la entrada A del encoder2
+  pinMode(pinA0A, INPUT);
+  pinMode(pinA0B, INPUT);
+
+  // attachInterrupt(0, interrupcionA, CHANGE); // entrada 2 PWM a la entrada A   del encoder1 
+  // attachInterrupt(1, interrupcionB, CHANGE); // entrada 3 PWM a la entrada A del encoder2
 
 }
 
 
 void loop() {
-  //Condicionales del sensor de luz
-  photocellReading = analogRead(photocellPin);
-
-
-  if(photocellReading <= 200) {
-  Serial.println("DARK : Analog Value = " + String(photocellReading));
-  light = "DARK";
-  voice.say(spSAFE);
-}
-  
-  else if (photocellReading > 200 && photocellReading <= 500) {
-  Serial.println("DIM LIGHT : Analog Value = " + String(photocellReading)); 
-  light = "DIM LIGHT";
-  voice.say(spCAUTION);
-  } 
-  else if (photocellReading > 500 && photocellReading <= 800) {
-  Serial.println("BRIGHT LIGHT : Analog Value = " + String(photocellReading)); 
-  light = "BRIGHT LIGHT";
-  voice.say(spALERT);
-  } 
-  else if (photocellReading > 800) {
-  Serial.println("FULL DAY LIGHT : Analog Value = " + String(photocellReading));
-  light = "FULL DAYLIGHT";
-  voice.say(spDANGER);
-  } 
-
   //Mide la temperatura y humedad del ambiente
   humidity = HT.readHumidity();
   tempC = HT.readTemperature();
@@ -376,36 +385,67 @@ void loop() {
   Serial.print("% / Temperature: ");
   Serial.print(tempC);
   Serial.print("C / ");
+  delay(1500);
+
+  photocellReading = analogRead(photocellPin);
+
+
+  if(photocellReading <= 200) {
+  //Serial.println("DARK : Analog Value = " + String(photocellReading));
+  light = "DARK";
+  voice.say(spSAFE);
+}
+  
+  if (photocellReading > 200 && photocellReading <= 500) {
+  //Serial.println("DIM LIGHT : Analog Value = " + String(photocellReading)); 
+  light = "DIM LIGHT";
+  voice.say(spALERT);
+  } 
+  if (photocellReading > 500 && photocellReading <= 800) {
+  //Serial.println("BRIGHT LIGHT : Analog Value = " + String(photocellReading)); 
+  light = "BRIGHT LIGHT";
+  voice.say(spCAUTION);
+  } 
+  if (photocellReading > 800) {
+  //Serial.println("FULL DAY LIGHT : Analog Value = " + String(photocellReading));
+  light = "FULL DAYLIGHT";
+  voice.say(spDANGER);
+  } 
 
 //Inicia comunicación  bluetoth
-  if (miBT.available() > 0) {
-    data = miBT.readString();
-    voice.say(spCONNECTED);
+if (miBT.available()>0){
+  data_before = miBT.readString();
+
+  Serial.print(data_before);
+  delay(100);
   }
 
-  
-  data_before = data;
-  Serial.println(data_before);
 
-  if (data_before == "menu"){
+
+  else if (data_before == "menu"){
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Insert command");
-    delay(10000);
-    lcd.clear();
-    
+    // Serial.print("Insert command");
+    voice.say(spSET);
+    voice.say(spCHOICE);
   }
 
-  if (data_before == "light"){
+  
+
+  else if (data_before == "light"){
+
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("L: ");
-    lcd.print(light); 
-    delay(10000);
-    lcd.clear();
-  }
+    lcd.print(light);
+    delay(500);
+  }    
+  
 
-  if (data_before == "weather"){
+  else if (data_before == "weather"){
+    
+    voice.say(spTEMPERATURE);
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Humidity: ");
@@ -416,30 +456,107 @@ void loop() {
     lcd.print("Temp: ");
     lcd.print(tempC);
     lcd.print("C");
-    delay(10000);
-    lcd.clear();
+    delay(1500);
   }
 
-// if (data_before == "telescope"){
+  else if (data_before == "up"){
+  voice.say(spSET);
+  voice.say(spMANUAL);
+  voice.say(spMOVE);
+
+  lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("UP");
+    digitalWrite(in1,LOW);
+    digitalWrite(in2,HIGH);
+    // interrupcionA();
+    delay(20000);
+
+  }
+
+  else if (data_before == "down"){
+  voice.say(spSET);
+  voice.say(spMANUAL);
+  voice.say(spMOVE);
+
+  lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("DOWN");
+    digitalWrite(in1,HIGH);
+    digitalWrite(in2,LOW);
+    // interrupcionA();
+    delay(20000);
+    } 
+  
+
+  else if (data_before == "left"){
+  voice.say(spSET);
+  voice.say(spMANUAL);
+  voice.say(spMOVE);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("LEFT");
+    digitalWrite(in3,LOW);
+  digitalWrite(in4,HIGH);
+  // interrupcionB();
+  delay(20000);
+  }
 
 
-//     voice.say(spSET);
-//     voice.say(spCONTROL);
-//     voice.say(spMOVE);
+  else if (data_before == "right"){
+  voice.say(spSET);
+  voice.say(spMANUAL);
+  voice.say(spMOVE);
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("RIGHT");
+
+    digitalWrite(in3,HIGH);
+    digitalWrite(in4,LOW);
+    // interrupcionB();
+    delay(20000);
+    
+  
+  }
+
+  else if (data_before == "off"){
+  voice.say(spSET);
+  voice.say(spMANUAL);
+  voice.say(spMOVE);
+  
+  lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("STOP");
+
+    digitalWrite(in1,LOW);
+  digitalWrite(in2,LOW);
+
+  digitalWrite(in3,LOW);
+  digitalWrite(in4,LOW);
+  delay(20000);
+
+   }
+   
+}
+// Funciones para el movimiento de los motores con stellarium
+
+
+
+
+//   else if (data_before == "telescope"){
 //     lcd.setCursor(0, 0); 
 //     lcd.print("Launch program");
-//     delay(10000);
 //     lcd.clear();
+//     delay(1000);    
 
-//     if (miBT.available() >= 7) {
-    
-//     char digit1 = miBT.read(); // Lee el primer dígito
-//     char digit2 = miBT.read(); // Lee el segundo dígito
-//     char digit3 = miBT.read(); // Lee el tercer dígito
-//     char coma = miBT.read(); // Lee el primer dígito
-//     char digit4 = miBT.read(); // Lee el primer dígito
-//     char digit5 = miBT.read(); // Lee el segundo dígito
-//     char digit6 = miBT.read(); // Lee el tercer dígito
+//     char digit1 = data_before[0]; // Lee el primer dígito
+//     char digit2 = data_before[1]; // Lee el segundo dígito
+//     char digit3 = data_before[2]; // Lee el tercer dígito
+//     char digit4 = data_before[3]; // Lee el primer dígito
+//     char digit5 = data_before[4]; // Lee el segundo dígito
+//     char digit6 = data_before[5]; // Lee el tercer dígito
 //     // Convierte los caracteres a números enteros
 //     int num1 = digit1 - '0';
 //     int num2 = digit2 - '0';
@@ -453,130 +570,31 @@ void loop() {
 //     number2 = num4 * 100 + num5*10 + num6;
 //     Serial.println(number1);
 //     Serial.println(number2);
+
+//   gradesA = number1;
+//   gradesB = number2;
+
+//   lcd.setCursor(0, 0);
+//   lcd.print("Ascention:");
+//   lcd.print(number1);
+
+//   lcd.setCursor(0, 1);
+//   lcd.print("Declination:");
+//   lcd.print(number2);
+
+//   lcd.clear();
+
+//   posdesA = round(number1/5);
+//   posdesB = round(number2/5);
+
+//   interrupcionA();
+//   interrupcionB();
+
 //   }
-//   posdesA = number1;
-//   posdesB = number2;
 //   }
+// }
 
 
-if (data_before == "down"){
-lcd.clear();
-    voice.say(spSET);
-    voice.say(spMANUAL);
-    voice.say(spMOVE);
-    lcd.setCursor(0, 0);
-    lcd.print("DOWN");
-    delay(5000);
-    lcd.clear();
-
-    turnLeftA();
-
-  }
-
-  if (data_before == "up"){
-    lcd.clear();
-    voice.say(spSET);
-    voice.say(spMANUAL);
-    voice.say(spMOVE);
-    lcd.setCursor(0, 0);
-    lcd.print("UP");
-    delay(5000);
-    lcd.clear();
-
-    turnRightA();
-
-  }
-
-  if (data_before == "right"){
-lcd.clear();
-    voice.say(spSET);
-    voice.say(spMANUAL);
-    voice.say(spMOVE);
-    lcd.setCursor(0, 0);
-    lcd.print("RIGHT");
-    delay(5000);
-    lcd.clear();
-
-    turnRightB();
-
-  }
-
-  if (data_before == "left"){
-lcd.clear();
-    voice.say(spSET);
-    voice.say(spMANUAL);
-    voice.say(spMOVE);
-    lcd.setCursor(0, 0);
-    lcd.print("LEFT");
-    delay(5000);
-    lcd.clear();
-
-    turnLeftB();
-
-  }
-
-  if (data_before == "off"){
-lcd.clear();
-    voice.say(spSET);
-    voice.say(spMANUAL);
-    voice.say(spMOVE);
-    lcd.setCursor(0, 0);
-    lcd.print("STOP");
-    delay(5000);
-    lcd.clear();
-
-    ShutOffA();
-    ShutOffB();
-
-  }
-  else {
- 
-  lcd.setCursor(0, 0);
-  lcd.print("Hi, Im Emmy");
-  lcd.setCursor(0, 1);
-  lcd.print("Your telescope");
-  
-  };
-
-
-}
-
-// Movimiento de los motores con control manual
-void turnRightA()  //  Ordena el giro en CW (Clock Way)
-{
-  digitalWrite(in1,HIGH);
-  digitalWrite(in2,LOW);
-}
-
-void ShutOffA()  //  Ordena el detenerse
-{
-  digitalWrite(in1,LOW);
-  digitalWrite(in2,LOW);
-}
-
-void turnLeftA()  //  Ordena el giro en CCW (Contra Clock Way)
-{
-  digitalWrite(in1,LOW);
-  digitalWrite(in2,HIGH);
-}
-
-void turnRightB()  //  Ordena el giro en CW (Clock Way)
-{
-  digitalWrite(in3,HIGH);
-  digitalWrite(in4,LOW);
-}
-
-void ShutOffB()  //  Ordena el detenerse
-{
-  digitalWrite(in3,LOW);
-  digitalWrite(in4,LOW);
-}
-
-void turnLeftB()  //  Ordena el giro en CCW (Contra Clock Way)
-{
-  digitalWrite(in3,LOW);
-  digitalWrite(in4,HIGH);
-}
 
 //----------------------------------------------------------------
 //STELLARIUM
@@ -771,50 +789,5 @@ void turnLeftB()  //  Ordena el giro en CCW (Contra Clock Way)
 
 
 
-// Funciones para el movimiento de los motores con stellarium
-// void interrupcionA(){ 
-  
-//   Serial.println(encposA);
 
-//   if (posdesA<encposA){
-//     turnLeftA();
-//     Serial.println("IZQ");
-//     encposA--;
-//     }
-
-//   if (posdesA>encposA){
-//     turnRightA();
-//     Serial.println("DER");
-//     encposA++;
-//     }
-
-//   if (posdesA==encposA){
-//     ShutOffA(); 
-//     Serial.println("BAM");
-//     }
-  
-//   }
-
-// void interrupcionB(){ 
-  
-//   Serial.println(encposB);
-
-//   if (posdesB < encposB){
-//     turnLeftB();
-//     Serial.println("IZQ");
-//     encposB--;
-//     }
-
-//   if (posdesB >encposB){
-//     turnRightB();
-//     Serial.println("DER");
-//     encposB++;
-//     }
-
-//   if (posdesB==encposB){
-//     ShutOffB(); 
-//     Serial.println("BAM");
-//     }
-  
-//   }
 
